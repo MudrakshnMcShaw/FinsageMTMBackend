@@ -20,9 +20,7 @@ try:
     # Ensure collection exists
     if COLLECTION_NAME not in db.list_collection_names():
         db.create_collection(COLLECTION_NAME)
-        logger.info(f"Created collection: {COLLECTION_NAME}")
 
-    logger.info(f"Connected to MongoDB at {MONGO_URL}, DB: {DB_NAME}")
 except Exception as e:
     logger.error("Failed to connect MongoDB", exc_info=True)
     raise e
