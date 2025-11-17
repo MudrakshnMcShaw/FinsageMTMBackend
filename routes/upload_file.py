@@ -102,7 +102,7 @@ def get_mtm_from_file(file_id: str):
             return []
         
         # Convert dataframe to UNIX timestamp
-        df["time"] = df["timestamp"].astype("int64") // 10**9
+        df["time"] = df["timestamp"].astype("int64") // 10**9 -19800
 
         # Compute OHLC using vectorized ops
         df["open"] = df["new_cum_sum_mtm"].shift(1).fillna(df["new_cum_sum_mtm"])
@@ -124,7 +124,7 @@ def get_mtm_from_file(file_id: str):
 
 
 
-# @router.get("/file/{file_id}/mtm")
+# @router.get("/file/{file_id}/mtms")
 # def get_mtm_from_file(file_id: str):
     """Fetch MTM timeseries data for a given uploaded file ID"""
     try:

@@ -39,8 +39,8 @@ def get_strategy_mtm(strategy_name: str):
             return []
 
         # ---- 2. Convert datetime to UNIX timestamp ---- #
-        df["time"] = df["Date"].astype("int64") // 10**9   # Faster than .timestamp()
-
+        df["time"] = df["Date"].astype("int64") // 10**9 -19800   # Faster than .timestamp()
+        
         # ---- 3. Compute OHLC using vectorized operations ---- #
         # OPEN = previous close or current if it's first row
         df["open"] = df["CumulativePnl"].shift(1).fillna(df["CumulativePnl"])
@@ -51,7 +51,7 @@ def get_strategy_mtm(strategy_name: str):
         # HIGH & LOW
         df["high"] = df[["open", "close"]].max(axis=1)
         df["low"]  = df[["open", "close"]].min(axis=1)
-
+        # df.to_csv('test.csv')
         # ---- 4. Select final required columns ---- #
         out = df[["time", "open", "high", "low", "close"]].to_dict(orient="records")
 
@@ -64,7 +64,7 @@ def get_strategy_mtm(strategy_name: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-# @router.get("/strategies/{strategy_name}/mtm")
+# @router.get("/strategies/{strategy_name}/mtms")
 # def get_strategy_mtm(strategy_name: str):
 #     """Generate OHLC data from CumulativePnl series (15-min candles) efficiently"""
 #     try:
@@ -110,7 +110,7 @@ def get_strategy_mtm(strategy_name: str):
 
 #         logger.info(f"Completed OHLC generation for '{strategy_name}' — total {count} records processed.")
 #         # logger.info(f"Generated {ohlc_data} OHLC data points for strategy '{strategy_name}'")
-#         # print(ohlc_data)
+#         # logger.info(ohlc_data[0])
 #         return ohlc_data
 
 #     except Exception as e:
