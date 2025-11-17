@@ -29,12 +29,31 @@ def get_strategy_mtm(strategy_name: str):
         logger.info(f"Fetching MTM data for strategy: {strategy_name}")
 
         # ---- 1. Load data into Pandas DataFrame directly ---- #
+        # cursor = db.strategies_mtm_data.find(
+        #     {"strategy": strategy_name},
+        #     {"_id": 0, "Date": 1, "CumulativePnl": 1}
+        # ).sort("Date", 1)
+        start_date = datetime(2020, 1, 1)
+
         cursor = db.strategies_mtm_data.find(
-            {"strategy": strategy_name},
+            {
+                "strategy": strategy_name,
+            },
             {"_id": 0, "Date": 1, "CumulativePnl": 1}
-        ).sort("Date", 1)
+        )
+
+        # cursors = db.strategies_mtm_data.find(
+        #     {
+        #         "strategy": strategy_name,
+        #     },
+        #     {"_id": 0, "Date": 1, "CumulativePnl": 1}
+        # )
+
+        # df2 = pd.DataFrame(list(cursors))
+        # df2.to_csv('not_sorted.csv')
 
         df = pd.DataFrame(list(cursor))
+        # df.to_csv('sorted.csv')
         if df.empty:
             return []
 

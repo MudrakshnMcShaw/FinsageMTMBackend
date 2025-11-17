@@ -93,7 +93,7 @@ def get_mtm_from_file(file_id: str):
                 {"file_id": ObjectId(file_id)},
                 {"_id": 0, "timestamp": 1, "new_cum_sum_mtm": 1}
             )
-            .sort("timestamp", 1)
+            # .sort("timestamp", 1)
         )
 
 
@@ -126,44 +126,44 @@ def get_mtm_from_file(file_id: str):
 
 # @router.get("/file/{file_id}/mtms")
 # def get_mtm_from_file(file_id: str):
-    """Fetch MTM timeseries data for a given uploaded file ID"""
-    try:
-        logger.info(f"Fetching MTM data for file_id: {file_id}")
+#     """Fetch MTM timeseries data for a given uploaded file ID"""
+#     try:
+#         logger.info(f"Fetching MTM data for file_id: {file_id}")
 
-        cursor = (
-            db.timeseries_mtm.find(
-                {"file_id": ObjectId(file_id)}, {"_id": 0, "timestamp": 1, "new_cum_sum_mtm": 1}
-            )
-            .sort("timestamp", 1)
-        )
+#         cursor = (
+#             db.timeseries_mtm.find(
+#                 {"file_id": ObjectId(file_id)}, {"_id": 0, "timestamp": 1, "new_cum_sum_mtm": 1}
+#             )
+#             .sort("timestamp", 1)
+#         )
 
-        ohlc_data = []
-        prev_close = None
-        count = 0
+#         ohlc_data = []
+#         prev_close = None
+#         count = 0
 
-        for record in cursor:
-            dt = record["timestamp"]   
-            unix_time = int(dt.timestamp()) # Convert to UNIX timestamp (epoch time)
+#         for record in cursor:
+#             dt = record["timestamp"]   
+#             unix_time = int(dt.timestamp()) # Convert to UNIX timestamp (epoch time)
 
-            mtm_value = record.get("new_cum_sum_mtm", 0)
+#             mtm_value = record.get("new_cum_sum_mtm", 0)
 
-            open_val = prev_close if prev_close is not None else mtm_value
-            close_val = mtm_value
-            high_val = max(open_val, close_val)
-            low_val = min(open_val, close_val)
+#             open_val = prev_close if prev_close is not None else mtm_value
+#             close_val = mtm_value
+#             high_val = max(open_val, close_val)
+#             low_val = min(open_val, close_val)
 
-            ohlc_data.append({
-                "time": unix_time,
-                "open": open_val,
-                "high": high_val,
-                "low": low_val,
-                "close": close_val
-            })
+#             ohlc_data.append({
+#                 "time": unix_time,
+#                 "open": open_val,
+#                 "high": high_val,
+#                 "low": low_val,
+#                 "close": close_val
+#             })
 
-            prev_close = close_val
-            count += 1
-        logger.info(f"Fetched {count} MTM records successfully for file_id: {file_id}")
-        return ohlc_data
-    except Exception as e:
-        logger.error(f"Error while fetching MTM data for file_id {file_id}: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+#             prev_close = close_val
+#             count += 1
+#         logger.info(f"Fetched {count} MTM records successfully for file_id: {file_id}")
+#         return ohlc_data
+#     except Exception as e:
+#         logger.error(f"Error while fetching MTM data for file_id {file_id}: {e}")
+#         raise HTTPException(status_code=500, detail=str(e))
