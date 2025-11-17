@@ -86,6 +86,49 @@ def get_mtm_from_file(file_id: str):
     """Fetch MTM timeseries data for a given uploaded file ID"""
     try:
         logger.info(f"Fetching MTM data for file_id: {file_id}")
+        
+        # Load data into Pandas DataFrame
+        cursor = (
+            timeseries_collection.find(
+                {"file_id": ObjectId(file_id)},
+                {"_id": 0, "timestamp": 1, "new_cum_sum_mtm": 1}
+            )
+            .sort("timestamp", 1)
+        )
+
+
+        df = pd.DataFrame(list(cursor))
+        if df.empty:
+            return []
+        
+        # Convert dataframe to UNIX timestamp
+        df["time"] = df["timestamp"].astype("int64") // 10**9
+
+        # Compute OHLC using vectorized ops
+        df["open"] = df["new_cum_sum_mtm"].shift(1).fillna(df["new_cum_sum_mtm"])
+
+        df["close"] = df["new_cum_sum_mtm"]
+
+        df["high"] = df[["open", "close"]].max(axis=1)
+        df["low"] = df[["open", "close"]].min(axis=1)
+
+        out = df[["time", "open", "high", "low", "close"]].to_dict(orient="records")
+        logger.info(f"Generated {len(out)} OHLC records for file_id: {file_id}")
+
+
+        return out
+
+    except Exception as e:
+        logger.error(f"Error while fetching MTM data for file_id {file_id}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+
+# @router.get("/file/{file_id}/mtm")
+# def get_mtm_from_file(file_id: str):
+    """Fetch MTM timeseries data for a given uploaded file ID"""
+    try:
+        logger.info(f"Fetching MTM data for file_id: {file_id}")
 
         cursor = (
             db.timeseries_mtm.find(
