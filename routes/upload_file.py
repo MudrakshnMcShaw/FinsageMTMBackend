@@ -1,20 +1,40 @@
-from fastapi import HTTPException, APIRouter, UploadFile
+from fastapi import HTTPException, APIRouter, UploadFile, Depends
 from fastapi.responses import JSONResponse
-from db import files_collection, timeseries_collection
-from config import get_infra_tools_db
+# from db import files_collection, timeseries_collection
+# from config import get_infra_tools_db
 from bson import ObjectId
 import pandas as pd
 from io import StringIO
 import datetime
 from logger_setup import logger
+from database import get_infra_db
 
 router = APIRouter(prefix="/api", tags=["file"])
 
 BATCH_SIZE = 5000   # Insert 5000 rows at a time (best performance)
-db = get_infra_tools_db()
+# In your routers
+def get_db():
+    try:
+        db = get_infra_db()
+        return db
+    except Exception as e:
+        logger.error(f"DB unavailable: {e}")
+        raise HTTPException(
+            status_code=503,
+            detail="Infra tools Database is down"
+        )
+
+def get_collections(db=Depends(get_db)):
+    return {
+        "files": db.files,
+        "timeseries": db.timeseries_mtm
+    }
 
 @router.post("/file/upload")
-async def upload_file(file: UploadFile):
+async def upload_file(file: UploadFile, db=Depends(get_db)):
+    files_collection = db.files
+    timeseries_collection = db.timeseries_mtm
+
     if not file.filename.endswith(".csv"):
         raise HTTPException(status_code=400, detail="Only CSV files allowed")
 
@@ -69,7 +89,8 @@ async def upload_file(file: UploadFile):
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/file")
-def list_uploaded_files():
+def list_uploaded_files(db=Depends(get_db)):
+    files_collection = db.files
     """List all uploaded files with metadata"""
     try:
         files = list(files_collection.find({}, {"_id": 1, "filename": 1, "upload_date": 1, "total_rows": 1}))
@@ -82,14 +103,15 @@ def list_uploaded_files():
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/file/{file_id}/mtm")
-def get_mtm_from_file(file_id: str):
+def get_mtm_from_file(file_id: str, db=Depends(get_db)):
     """Fetch MTM timeseries data for a given uploaded file ID"""
     try:
         logger.info(f"Fetching MTM data for file_id: {file_id}")
         
         # Load data into Pandas DataFrame
         cursor = (
-            timeseries_collection.find(
+            # timeseries_collection.find(
+            db.timeseries_mtm.find(
                 {"file_id": ObjectId(file_id)},
                 {"_id": 0, "timestamp": 1, "new_cum_sum_mtm": 1}
             )
@@ -121,49 +143,3 @@ def get_mtm_from_file(file_id: str):
     except Exception as e:
         logger.error(f"Error while fetching MTM data for file_id {file_id}: {e}")
         raise HTTPException(status_code=500, detail=str(e))
-
-
-
-# @router.get("/file/{file_id}/mtms")
-# def get_mtm_from_file(file_id: str):
-#     """Fetch MTM timeseries data for a given uploaded file ID"""
-#     try:
-#         logger.info(f"Fetching MTM data for file_id: {file_id}")
-
-#         cursor = (
-#             db.timeseries_mtm.find(
-#                 {"file_id": ObjectId(file_id)}, {"_id": 0, "timestamp": 1, "new_cum_sum_mtm": 1}
-#             )
-#             .sort("timestamp", 1)
-#         )
-
-#         ohlc_data = []
-#         prev_close = None
-#         count = 0
-
-#         for record in cursor:
-#             dt = record["timestamp"]   
-#             unix_time = int(dt.timestamp()) # Convert to UNIX timestamp (epoch time)
-
-#             mtm_value = record.get("new_cum_sum_mtm", 0)
-
-#             open_val = prev_close if prev_close is not None else mtm_value
-#             close_val = mtm_value
-#             high_val = max(open_val, close_val)
-#             low_val = min(open_val, close_val)
-
-#             ohlc_data.append({
-#                 "time": unix_time,
-#                 "open": open_val,
-#                 "high": high_val,
-#                 "low": low_val,
-#                 "close": close_val
-#             })
-
-#             prev_close = close_val
-#             count += 1
-#         logger.info(f"Fetched {count} MTM records successfully for file_id: {file_id}")
-#         return ohlc_data
-#     except Exception as e:
-#         logger.error(f"Error while fetching MTM data for file_id {file_id}: {e}")
-#         raise HTTPException(status_code=500, detail=str(e))

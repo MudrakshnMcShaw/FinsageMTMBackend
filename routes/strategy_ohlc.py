@@ -1,15 +1,26 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 from datetime import datetime
-from config import get_finsage_db
+# from config import get_finsage_db
 from logger_setup import logger  
 import pandas as pd
+from database import get_finsage_db
 
 router = APIRouter(prefix="/api", tags=["strategies"])
-db = get_finsage_db()
 
+# In your routers
+def get_db():
+    try:
+        db = get_finsage_db()
+        return db
+    except Exception as e:
+        logger.error(f"DB unavailable: {e}")
+        raise HTTPException(
+            status_code=503,
+            detail="Finsage Database is down"
+        )
 
 @router.get("/strategies")
-def get_strategies():
+def get_strategies(db=Depends(get_db)):
     """Fetch all available strategies"""
     try:
         logger.info("Fetching list of strategies from MongoDB...")
@@ -23,34 +34,18 @@ def get_strategies():
 
 
 @router.get("/strategies/{strategy_name}/mtm")
-def get_strategy_mtm(strategy_name: str):
+def get_strategy_mtm(strategy_name: str, db=Depends(get_db)):
     """Generate OHLC from CumulativePnl (15-min candles) using pandas for speed"""
     try:
         logger.info(f"Fetching MTM data for strategy: {strategy_name}")
 
         # ---- 1. Load data into Pandas DataFrame directly ---- #
-        # cursor = db.strategies_mtm_data.find(
-        #     {"strategy": strategy_name},
-        #     {"_id": 0, "Date": 1, "CumulativePnl": 1}
-        # ).sort("Date", 1)
-        start_date = datetime(2020, 1, 1)
-
         cursor = db.strategies_mtm_data.find(
             {
                 "strategy": strategy_name,
             },
             {"_id": 0, "Date": 1, "CumulativePnl": 1}
         )
-
-        # cursors = db.strategies_mtm_data.find(
-        #     {
-        #         "strategy": strategy_name,
-        #     },
-        #     {"_id": 0, "Date": 1, "CumulativePnl": 1}
-        # )
-
-        # df2 = pd.DataFrame(list(cursors))
-        # df2.to_csv('not_sorted.csv')
 
         df = pd.DataFrame(list(cursor))
         # df.to_csv('sorted.csv')
@@ -81,57 +76,3 @@ def get_strategy_mtm(strategy_name: str):
     except Exception as e:
         logger.exception(f"Error while generating OHLC for '{strategy_name}'")
         raise HTTPException(status_code=500, detail=str(e))
-
-
-# @router.get("/strategies/{strategy_name}/mtms")
-# def get_strategy_mtm(strategy_name: str):
-#     """Generate OHLC data from CumulativePnl series (15-min candles) efficiently"""
-#     try:
-#         logger.info(f"Starting OHLC generation for strategy: {strategy_name}")
-
-#         cursor = (
-#             db.strategies_mtm_data.find(
-#                 {"strategy": strategy_name}, {"_id": 0, "Date": 1, "CumulativePnl": 1}
-#             )
-#             .sort("Date", 1)
-#         )
-
-#         ohlc_data = []
-#         prev_close = None
-#         count = 0
-
-#         for record in cursor:
-#             # print(record)
-#             dt = record["Date"]   
-#             unix_time = int(dt.timestamp()) # Convert to UNIX timestamp (epoch time)
-
-#             mtm_value = record.get("CumulativePnl", 0)
-#             # timestamp = record["Date"]
-
-#             open_val = prev_close if prev_close is not None else mtm_value
-#             close_val = mtm_value
-#             high_val = max(open_val, close_val)
-#             low_val = min(open_val, close_val)
-
-#             ohlc_data.append({
-#                 "time": unix_time,
-#                 "open": open_val,
-#                 "high": high_val,
-#                 "low": low_val,
-#                 "close": close_val
-#             })
-
-#             prev_close = close_val
-#             count += 1
-
-#             # if count % 1000 == 0:
-#                 # logger.info(f"Processed {count} MTM records so far for '{strategy_name}'")
-
-#         logger.info(f"Completed OHLC generation for '{strategy_name}' — total {count} records processed.")
-#         # logger.info(f"Generated {ohlc_data} OHLC data points for strategy '{strategy_name}'")
-#         # logger.info(ohlc_data[0])
-#         return ohlc_data
-
-#     except Exception as e:
-#         logger.exception(f"Error while generating OHLC for '{strategy_name}'")
-#         raise HTTPException(status_code=500, detail=str(e))

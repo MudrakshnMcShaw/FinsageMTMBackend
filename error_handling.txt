@@ -1,0 +1,11 @@
+MongoDB down
+     ↓
+database.py → get_finsage_db() → raises exception
+     ↓
+file1.py (strategy_ohlc.py) → get_db() dependency → catches → raises HTTPException(503)
+     ↓
+main.py → @app.exception_handler(HTTPException) → catches it
+     ↓
+→ Returns JSON: { "detail": "Finsage Database is down" } with status 503
+     ↓
+Frontend (Axios/Fetch) → receives clean JSON error

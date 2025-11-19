@@ -1,6 +1,8 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from routes import strategy_ohlc, upload_file
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse
 
 app = FastAPI(
     title="FinSageAI MTM Strategy API",
@@ -8,6 +10,12 @@ app = FastAPI(
     version="1.0.0"
 )
 
+@app.exception_handler(HTTPException)
+async def http_exception_handler(request: Request, exc: HTTPException):
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={"detail": exc.detail}
+    )
 # CORS setup
 app.add_middleware(
     CORSMiddleware,
