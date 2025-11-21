@@ -1,7 +1,5 @@
 from fastapi import HTTPException, APIRouter, UploadFile, Depends
 from fastapi.responses import JSONResponse
-# from db import files_collection, timeseries_collection
-# from config import get_infra_tools_db
 from bson import ObjectId
 import pandas as pd
 from io import StringIO
@@ -143,3 +141,30 @@ def get_mtm_from_file(file_id: str, db=Depends(get_db)):
     except Exception as e:
         logger.error(f"Error while fetching MTM data for file_id {file_id}: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+@router.delete("/file/{file_id}")
+def delete_file(file_id: str, db=Depends(get_db)):
+    files_collection = db.files
+    timeseries_collection = db.timeseries_mtm
+
+    try:
+        oid = ObjectId(file_id)
+    except:
+        raise HTTPException(status_code=400, detail="Invalid file_id format")
+
+    # Check if file exists
+    file_doc = files_collection.find_one({"_id": oid})
+    if not file_doc:
+        raise HTTPException(status_code=404, detail="File not found")
+
+    # Delete file metadata
+    files_collection.delete_one({"_id": oid})
+
+    # Delete associated timeseries rows
+    result = timeseries_collection.delete_many({"file_id": oid})
+
+    return {
+        "message": "File deleted successfully",
+        "file_id": file_id,
+        "deleted_timeseries_rows": result.deleted_count
+    }

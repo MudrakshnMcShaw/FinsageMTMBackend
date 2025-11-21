@@ -1,6 +1,5 @@
 from fastapi import APIRouter, HTTPException, Depends
 from datetime import datetime
-# from config import get_finsage_db
 from logger_setup import logger  
 import pandas as pd
 from database import get_finsage_db

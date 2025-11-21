@@ -1,6 +1,6 @@
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from routes import strategy_ohlc, upload_file
+from routes import strategy_ohlc, upload_file, portfolio_ohlc
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
@@ -28,6 +28,7 @@ app.add_middleware(
 # include router
 app.include_router(strategy_ohlc.router)
 app.include_router(upload_file.router)
+app.include_router(portfolio_ohlc.router)
 
 @app.get("/")
 def home():
