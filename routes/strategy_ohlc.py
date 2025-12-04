@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, Query
 from datetime import datetime
 from logger_setup import logger  
 import pandas as pd
@@ -45,14 +45,32 @@ def get_strategy_mtm(strategy_name: str, db=Depends(get_db)):
             },
             {"_id": 0, "Date": 1, "CumulativePnl": 1}
         )
+# @router.get("/strategies/{strategy_name}/mtm")
+# def get_strategy_mtm(
+#     strategy_name: str,
+#     from_: int = Query(..., alias="from"),
+#     to: int = Query(..., alias="to"),
+#     db=Depends(get_db)
+# ):
+#     try:
+#         from_sec = from_
+#         to_sec = to
 
+#         cursor = db.strategies_mtm_data.find({
+#             "strategy": strategy_name,
+#             "Date": {
+#                 "$gte": pd.Timestamp(from_sec, unit='s', tz='UTC'),
+#                 "$lte": pd.Timestamp(to_sec, unit='s', tz='UTC')
+#             }
+#         }, {"_id": 00, "Date": 1, "CumulativePnl": 1}).sort("Date", 1)
+        
         df = pd.DataFrame(list(cursor))
         # df.to_csv('sorted.csv')
         if df.empty:
             return []
-
+            
         # ---- 2. Convert datetime to UNIX timestamp ---- #
-        df["time"] = df["Date"].astype("int64") // 10**9 -19800   # Faster than .timestamp()
+        df["time"] = (df["Date"].astype("int64") // 10**9 -19800) * 1000   # Faster than .timestamp()
         
         # ---- 3. Compute OHLC using vectorized operations ---- #
         # OPEN = previous close or current if it's first row
@@ -71,7 +89,6 @@ def get_strategy_mtm(strategy_name: str, db=Depends(get_db)):
         logger.info(f"Generated {len(out)} OHLC candles for {strategy_name}")
 
         return out
-
     except Exception as e:
         logger.exception(f"Error while generating OHLC for '{strategy_name}'")
         raise HTTPException(status_code=500, detail=str(e))
