@@ -208,35 +208,18 @@ def list_uploaded_json(db=Depends(get_db)):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-# @router.get("/file/{file_id}/mtm")
-# def get_mtm_from_file(file_id: str, db=Depends(get_db)):
-#     """Fetch MTM timeseries data for a given uploaded file ID"""
-#     try:
-#         logger.info(f"Fetching MTM data for file_id: {file_id}")
-        
-#         # Load data into Pandas DataFrame
-#         cursor = (
-#             # timeseries_collection.find(
-#             db.timeseries_mtm.find(
-#                 {"file_id": ObjectId(file_id)},
-#                 {"_id": 0, "timestamp": 1, "CumulativePnl": 1}
-#             )
-#             .sort("timestamp", 1)
-#         )
-
-
 @router.get("/file/{file_id}/mtm")
 def get_mtm_from_file(
     file_id: str,
-    from_ts: int = Query(..., alias="from"),   # Unix seconds
-    to_ts: int = Query(..., alias="to"),
+    # from_ts: int = Query(..., alias="from"),   # Unix seconds
+    # to_ts: int = Query(..., alias="to"),
     db=Depends(get_db)
 ):
     try:
 
         cursor = db.timeseries_mtm.find({
             "file_id": ObjectId(file_id),
-            # "timestamp": {"$lte": to_ts}  # or adjust based on your field
+            # "timestamp": {"$gte": from_ts, "$lte": to_ts}  # or adjust based on your field
         }).sort("timestamp", 1)
 
         df = pd.DataFrame(list(cursor))
