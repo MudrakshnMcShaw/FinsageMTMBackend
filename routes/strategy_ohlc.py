@@ -1,5 +1,5 @@
 from fastapi import APIRouter, HTTPException, Depends, Query
-from datetime import datetime
+from datetime import datetime, timezone
 from logger_setup import logger  
 import pandas as pd
 from database import get_finsage_db
@@ -18,8 +18,17 @@ def get_db():
             detail="Finsage Database is down"
         )
 
+def normalize_to_min(ts):
+    return ts - (ts % 60)
+
+def convert_to_datetime_str(ts):
+    norm_ts = normalize_to_min(ts)
+    dt = datetime.fromtimestamp(norm_ts, tz=timezone.utc)
+    return dt.isoformat(timespec="milliseconds")
+
 @router.get("/strategies")
-def get_strategies(db=Depends(get_db)):
+def get_strategies( 
+    db=Depends(get_db)):
     """Fetch all available strategies"""
     try:
         logger.info("Fetching list of strategies from MongoDB...")
@@ -33,11 +42,40 @@ def get_strategies(db=Depends(get_db)):
 
 
 @router.get("/strategies/{strategy_name}/mtm")
-def get_strategy_mtm(strategy_name: str, db=Depends(get_db)):
+def get_strategy_mtm(
+    strategy_name: str,
+    from_ts: int = Query(None, alias="from"),
+    to_ts: int = Query(None, alias="to"),
+    count_back: int = Query(None, alias="countBack"),
+    db=Depends(get_db)
+    ):
     """Generate OHLC from CumulativePnl (15-min candles) using pandas for speed"""
     try:
         logger.info(f"Fetching MTM data for strategy: {strategy_name}")
+        # base_filter = {'strategy': strategy_name}
 
+        # if from_ts is not None:
+
+        #     from_dt = datetime.fromtimestamp(from_ts)
+        #     base_filter.setdefault('Date', {})["$gte"] = from_dt
+        #     print(f'Tradingview from: {from_dt}')
+
+        # if to_ts is not None:
+        #     to_dt = datetime.fromtimestamp(to_ts)
+        #     base_filter.setdefault('Date', {})["$lt"] = to_dt
+        #     print(f'Tradingview to: {to_dt}')
+
+        # if count_back is not None:
+        #     print(f'query: {base_filter}')
+        #     cursor = db.strategies_mtm_data.find(base_filter, {"_id": 0, "Date": 1, "CumulativePnl": 1}).sort('Date', -1).limit(count_back)
+        #     data = list(cursor)
+        #     data.reverse()
+        # else:
+        #     cursor = db.strategies_mtm_data.find(
+        #         base_filter, 
+        #         {"_id": 0, "Date": 1, "CumulativePnl": 1}
+        #     ).sort('Date', 1)
+        #     data = list(cursor)
         # ---- 1. Load data into Pandas DataFrame directly ---- #
         cursor = db.strategies_mtm_data.find(
             {
@@ -45,25 +83,7 @@ def get_strategy_mtm(strategy_name: str, db=Depends(get_db)):
             },
             {"_id": 0, "Date": 1, "CumulativePnl": 1}
         )
-# @router.get("/strategies/{strategy_name}/mtm")
-# def get_strategy_mtm(
-#     strategy_name: str,
-#     from_: int = Query(..., alias="from"),
-#     to: int = Query(..., alias="to"),
-#     db=Depends(get_db)
-# ):
-#     try:
-#         from_sec = from_
-#         to_sec = to
 
-#         cursor = db.strategies_mtm_data.find({
-#             "strategy": strategy_name,
-#             "Date": {
-#                 "$gte": pd.Timestamp(from_sec, unit='s', tz='UTC'),
-#                 "$lte": pd.Timestamp(to_sec, unit='s', tz='UTC')
-#             }
-#         }, {"_id": 00, "Date": 1, "CumulativePnl": 1}).sort("Date", 1)
-        
         df = pd.DataFrame(list(cursor))
         # df.to_csv('sorted.csv')
         if df.empty:

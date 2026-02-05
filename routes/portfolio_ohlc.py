@@ -408,15 +408,20 @@ async def get_portfolio_mtm(
     equity = pivot["portfolio_equity"].reset_index()
 
     # 6️⃣ Build OHLC 
-    equity["open"] = equity["portfolio_equity"].shift(1).fillna(equity["portfolio_equity"])
-    equity["close"] = equity["portfolio_equity"]
+    equity["open"] = equity["portfolio_equity"].fillna(equity["portfolio_equity"])
+    equity["close"] = equity["portfolio_equity"].shift(-1).fillna(equity["portfolio_equity"])
 
     equity["high"] = equity[["open", "close"]].max(axis=1)
     equity["low"]  = equity[["open", "close"]].min(axis=1)
 
     # 7️⃣ Convert UNIX time (IST)
     equity["time"] = ((equity["Date"].astype("int64") // 10**9) - 19800) * 1000
+    filename = f"{portfolio_name}_csv_{datetime.utcnow():%Y-%m-%d}.csv"
 
+    equity[["time", "open", "high", "low", "close"]].to_csv(
+        filename,
+        index=False
+    )
     out = equity[["time", "open", "high", "low", "close"]].to_dict("records")
 
     return out
