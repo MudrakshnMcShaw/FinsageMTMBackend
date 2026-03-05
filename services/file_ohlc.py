@@ -4,6 +4,7 @@ from bson import ObjectId
 import pandas as pd
 import numpy as np
 from datetime import datetime
+from logger_setup import logger
 
 def get_file_ohlc(
         file_id: str,
@@ -29,8 +30,8 @@ def get_file_ohlc(
         file_name = f"uploaded_currupt_csv_on_{today}_{file_id}.csv"
 
         bad_nan = df[df.isna().any(axis=1)]
-        print("NAN ROWS:", bad_nan.info())
-        bad_nan.to_csv(file_name, index=False)
+        logger.error("NAN ROWS:", bad_nan.info())
+        # bad_nan.to_csv(file_name, index=False)
 
         df["timestamp"] = pd.to_numeric(df["timestamp"], errors="coerce")
         df["CumulativePnl"] = pd.to_numeric(df["CumulativePnl"], errors="coerce")

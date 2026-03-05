@@ -1,6 +1,7 @@
 import pandas as pd
 from stocktrends import Renko
-
+from logger_setup import logger
+import math
 # ==================== USER SETTINGS ====================
 # brick_type = 'close'           # 'close' or 'ohlc'
 # brick_method = 'percentage'          # 'atr', 'percentage', or 'traditional'
@@ -10,7 +11,12 @@ from stocktrends import Renko
 def calculate_brick_size(df, method: str, value: float):
     """Calculate brick size based on method"""
     if method == 'atr':
-        df_copy = df.copy()
+        # convert the value to int
+        int_value = value
+        
+        window = int(math.ceil(int_value)) * 2
+        df_copy = df.tail(window).copy()
+        
         df_copy['h-l'] = df_copy['high'] - df_copy['low']
         df_copy['h-pc'] = abs(df_copy['high'] - df_copy['close'].shift(1))
         df_copy['l-pc'] = abs(df_copy['low'] - df_copy['close'].shift(1))
@@ -82,11 +88,12 @@ def generate_renko(
     """
 
     df = df.copy()
+    # logger.debug(df.info())
     
     if "time" in df.columns:
         df.rename(columns={"time": "date"}, inplace=True)
-    
-    df["date"] = pd.to_datetime(df["date"])
+
+    df["date"] = pd.to_datetime(df["date"], unit="ms")
 
     brick_size = calculate_brick_size(df, method, value)
 

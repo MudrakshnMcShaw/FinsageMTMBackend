@@ -75,7 +75,15 @@ async def upload_file(file: UploadFile, db=Depends(get_db)):
 
             row_count = len(records)
 
-
+        for i, r in enumerate(records):
+            pnl = r.get("CumulativePnl")
+            if pnl is None or pd.isna(pnl):
+                logger.error("User tried to upload currupt file")
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Invalid CumulativePnl at row {i+1}"
+                )
+            
         # Insert metadata
         file_doc = {
             "filename": file.filename,
@@ -123,6 +131,8 @@ async def upload_file(file: UploadFile, db=Depends(get_db)):
 
     except json.JSONDecodeError:
         raise HTTPException(status_code=400, detail="Invalid JSON format")
+    except HTTPException as e:
+        raise e
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -138,6 +148,24 @@ def list_uploaded_files(db=Depends(get_db)):
             f["file_id"] = str(f["_id"])
             del f["_id"]
         return files
+    except Exception as e:
+        logger.error(f"Error while listing uploaded files: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/find_file")
+def get_file_by_id(
+    file_id: str,
+    db=Depends(get_db)):
+    files_collection = db.files
+    """List all uploaded files with metadata"""
+    try:
+        file = files_collection.find_one(
+            {"_id": ObjectId(file_id)}, 
+            {"_id": 1, "filename": 1,}
+            )
+        
+        return file["filename"]
     except Exception as e:
         logger.error(f"Error while listing uploaded files: {e}")
         raise HTTPException(status_code=500, detail=str(e))

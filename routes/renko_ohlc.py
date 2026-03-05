@@ -41,10 +41,15 @@ def make_renko_chart(
 ):
     ohlc = get_file_ohlc(file_id, db)
     df = pd.DataFrame(ohlc)
-    logger.info(df.info())
-    logger.info(df.head(10))
     renko_df, brick_size = generate_renko(df, brick_type, method, value)
+
+    # convert back date column to time (epoc seconds)
+    if "date" in renko_df:
+        renko_df.rename(columns={"date": "time"}, inplace=True)
+
+    # convert to datetime type properly first 
+    renko_df["time"] = pd.to_datetime(renko_df["time"])
+    renko_df["time"] = renko_df["time"].astype("int64") // 10**9 * 1000
     out = renko_df[["time", "open", "high", "low", "close"]].to_dict("records")
-    # logger.info(out)
 
     return out
