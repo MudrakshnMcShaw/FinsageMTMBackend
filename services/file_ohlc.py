@@ -26,11 +26,11 @@ def get_file_ohlc(
         # bad = df[df.isin([np.inf, -np.inf]).any(axis=1)]
         # print("INF ROWS:", bad)
 
-        today = datetime.now().strftime("%Y-%m-%d")
-        file_name = f"uploaded_currupt_csv_on_{today}_{file_id}.csv"
+        # today = datetime.now().strftime("%Y-%m-%d")
+        # file_name = f"uploaded_currupt_csv_on_{today}_{file_id}.csv"
 
-        bad_nan = df[df.isna().any(axis=1)]
-        logger.error("NAN ROWS:", bad_nan.info())
+        # bad_nan = df[df.isna().any(axis=1)]
+        # logger.error("NAN ROWS:", bad_nan.info())
         # bad_nan.to_csv(file_name, index=False)
 
         df["timestamp"] = pd.to_numeric(df["timestamp"], errors="coerce")
